@@ -52,8 +52,8 @@ class Engine(object):
         assert hasattr(self, 'model'), 'Please specify the exact model !'
         self.model.eval()
         with torch.no_grad():
-            test_users, test_items = evaluate_data[0], evaluate_data[1]
-            negative_users, negative_items = evaluate_data[2], evaluate_data[3]
+            test_users, test_items, test_ratings = evaluate_data[0], evaluate_data[1], evaluate_data[2]
+            negative_users, negative_items, negative_ratings = evaluate_data[3], evaluate_data[4],evaluate_data[5] 
             if self.config['use_cuda'] is True:
                 test_users = test_users.cuda()
                 test_items = test_items.cuda()
@@ -71,9 +71,11 @@ class Engine(object):
             self._metron.subjects = [test_users.data.view(-1).tolist(),
                                  test_items.data.view(-1).tolist(),
                                  test_scores.data.view(-1).tolist(),
+                                 test_ratings.data.view(-1).tolist(),    
                                  negative_users.data.view(-1).tolist(),
                                  negative_items.data.view(-1).tolist(),
-                                 negative_scores.data.view(-1).tolist()]
+                                 negative_scores.data.view(-1).tolist(),
+                                 negative_ratings.data.view(-1).tolist()]
         hit_ratio, ndcg = self._metron.cal_hit_ratio(), self._metron.cal_ndcg()
         self._writer.add_scalar('performance/HR', hit_ratio, epoch_id)
         self._writer.add_scalar('performance/NDCG', ndcg, epoch_id)
