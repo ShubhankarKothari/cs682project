@@ -76,10 +76,10 @@ class Engine(object):
                                  negative_items.data.view(-1).tolist(),
                                  negative_scores.data.view(-1).tolist(),
                                  negative_ratings.data.view(-1).tolist()]
-        hit_ratio, ndcg = self._metron.cal_hit_ratio(), self._metron.cal_ndcg()
+        hit_ratio, ndcg, gbhit_ratio = self._metron.cal_hit_ratio(), self._metron.cal_ndcg(), self._metron.cal_hit_gbratio()
         self._writer.add_scalar('performance/HR', hit_ratio, epoch_id)
         self._writer.add_scalar('performance/NDCG', ndcg, epoch_id)
-        print('[Evluating Epoch {}] HR = {:.4f}, NDCG = {:.4f}'.format(epoch_id, hit_ratio, ndcg))
+        print('[Evluating Epoch {}] HR = {:.4f}, NDCG = {:.4f}, GBHR = {:.4f}'.format(epoch_id, hit_ratio, ndcg,gbhit_ratio))
         return hit_ratio, ndcg
 
     def save(self, alias, epoch_id, hit_ratio, ndcg):

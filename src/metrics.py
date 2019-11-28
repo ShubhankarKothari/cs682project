@@ -1,6 +1,7 @@
 import math
 import pandas as pd
 import copy
+import numpy as np
 
 class MetronAtK(object):
     def __init__(self, top_k):
@@ -38,11 +39,15 @@ class MetronAtK(object):
                             'item': neg_items + test_items,
                             'score': neg_scores + test_scores,
                             'ratings': neg_ratings+ test_ratings})
-        print(full.shape)
+        #print(full.shape)
         # get dict of golden items.
         self._test_items = { d['user'].iloc[0]:d['item'].to_list() for i,d in test.groupby('user')}
+        self._test_ratings = { d['user'].iloc[0]:sum([r for r in d['ratings'].to_list() if r == 1.0]) for i,d in test.groupby('user')}
+        self._uratings = { d['user'].iloc[0]:d['ratings'].to_list() for i,d in test.groupby('user')}     
+        #print(self._uratings)
         # rank the items according to the scores for each user
         fullx = pd.concat(tuple([d.drop_duplicates(subset='item') for i,d in full.groupby('user')]),axis=0)
+        self._scores = {}
         
         full = copy.deepcopy(fullx)
         
@@ -56,16 +61,32 @@ class MetronAtK(object):
         top_k = full[full['rank']<=top_k]
         score = 0.0
         # golden items hit in the top_K items
-        score_1 = sum([(len(d[(d['item'].isin(self._test_items[d['user'].iloc[0]]))& (d['ratings']==1.0)])/self._top_k) for i,d in top_k.groupby('user')])
-        score_2 = sum([(len(d[(d['item'].isin(self._test_items[d['user'].iloc[0]]))& (d['ratings']==0.0)])/self._top_k) for i,d in top_k.groupby('user')])
+        score_1 = sum([(len(d[(d['item'].isin(self._test_items[d['user'].iloc[0]]))& (d['ratings']==1.0)])) for i,d in top_k.groupby('user')])
+        score_2 = sum([(len(d[(d['item'].isin(self._test_items[d['user'].iloc[0]]))& (d['ratings']==0.0)])) for i,d in top_k.groupby('user')])
         score = score_1 - score_2
         return score/full['user'].nunique()
 
+    def cal_hit_gbratio(self):
+        """Hit Ratio @ top_K"""
+        full, top_k = self._subjects, self._top_k
+        top_k = full[full['rank']<=top_k]
+        #print({d['user'].iloc[0]:d['ratings'].to_list()  for i,d in top_k.groupby('user')})
+        score = 0.0
+        # golden items hit in the top_K items
+        score_1 = {d['user'].iloc[0]:len(d[(d['item'].isin(self._test_items[d['user'].iloc[0]]))& (d['ratings']==1.0)]) for i,d in top_k.groupby('user')}
+        score_2 = {d['user'].iloc[0]:len(d[(d['item'].isin(self._test_items[d['user'].iloc[0]]))& (d['ratings']==0.0)]) for i,d in top_k.groupby('user')}   
+        score_ratio = [(score_1[d]-score_2[d]/self._test_ratings[d]) if self._test_ratings[d]!=0 else 0  for d in self._test_ratings.keys()]
+        #print(np.mean(score_ratio))
+        #print(score_1)
+        #score = score_1 + score_2
+        return np.mean(score_ratio)
+    
+    
     def cal_ndcg(self):
         full, top_k = self._subjects, self._top_k
         top_k = full[full['rank']<=top_k]
         score = 0.0
         score_1 = sum([sum(d[(d['item'].isin(self._test_items[d['user'].iloc[0]]))& (d['ratings']==1.0)]['rank'].apply(lambda x: math.log(2) / math.log(1 + x)).to_list()) for i,d in top_k.groupby('user')])
-        score_2 = sum([sum(d[(d['item'].isin(self._test_items[d['user'].iloc[0]]))& (d['ratings']==0.0)]['rank'].apply(lambda x: math.log(2) / math.log(1 + x)).to_list()) for i,d in top_k.groupby('user')])
-        score = score_1 - score_2
+        #score_2 = sum([sum(d[(d['item'].isin(self._test_items[d['user'].iloc[0]]))& (d['ratings']==0.0)]['rank'].apply(lambda x: math.log(2) / math.log(1 + x)).to_list()) for i,d in top_k.groupby('user')])
+        score = score_1 #- score_2
         return score / full['user'].nunique()

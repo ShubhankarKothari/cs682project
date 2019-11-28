@@ -60,17 +60,17 @@ class SampleGenerator(object):
         """binarize into 0 or 1, implicit feedback"""
         ratings = deepcopy(ratings)
         ratings['rating'][ratings['rating'] < 2.5] = 0
-        ratings['rating'][ratings['rating'] >= 2.5] = 1.0
+        ratings['rating'][ratings['rating'] > 2.5] = 1.0
         return ratings
 
     def _split_loo(self, ratings):
         """leave one out train/test split """
         ratings['rank_latest'] = ratings.groupby(['userId'])['timestamp'].rank(method='first', ascending=False)
         #print(ratings.iloc[:30])
-        test = ratings[ratings['rank_latest'] <= 5] 
+        test = ratings[ratings['rank_latest'] <2] 
         #test['rank_latest'] = test['rank_latest'].apply(lambda x: 6.0-x) #re-ranking temporally.
         #changed values to top 5 as test.
-        train = ratings[ratings['rank_latest'] > 5]
+        train = ratings[ratings['rank_latest'] >= 2]
         assert train['userId'].nunique() == test['userId'].nunique()
         return train[['userId', 'itemId', 'rating']], test[['userId', 'itemId', 'rating']]
 
