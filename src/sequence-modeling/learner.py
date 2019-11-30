@@ -85,6 +85,53 @@ class Learner:
                 cur_movie_id = sample
         return seq
 
+    def generate_distribution(self, init_movie_id, movie_embeddings):
+        cur_movie_id = init_movie_id
+        hidden = self.model.init_hidden(1)
+        seq = []
+        seq.append(cur_movie_id)
+        with torch.no_grad():
+            emb = torch.Tensor(movie_embeddings[cur_movie_id]).view(1,1,-1)
+            scores, hidden = self.model(emb, hidden)
+            # Sample from the network as a multinomial distribution
+            output_dist = scores.data.view(-1).div(0.8).exp()
+            denom = torch.sum(output_dist)
+            distribution = dist.div(denom)
+            #sample = torch.multinomial(output_dist, 1)[0].numpy()
+#                 print ("Sampled:", sample)
+            seq.append(sample)
+            cur_movie_id = sample
+           
+            return distribution
+        return seq     
+    
+    def generate_dist_from_subsequence(self, init_movie_sequence, movie_embeddings, seq_length):
+        cur_movie_id = init_movie_sequence_[0]
+        hidden = self.model.init_hidden(1)
+        seq = []
+        seq.append(cur_movie_id)
+        with torch.no_grad():
+            for i in range(len(0,init_movie_sequence)):
+                cur_movie_id = init_movie_sequence[i]                
+                emb = torch.Tensor(movie_embeddings[cur_movie_id]).view(1,1,-1)
+                scores, hidden = self.model(emb, hidden)
+                #output_dist = scores.data.view(-1).div(0.8).exp()
+                #sample = torch.multinomial(output_dist, 1)[0].numpy()
+            output_dist = scores.data.view(-1).div(0.8).exp()
+            sample = torch.multinomial(output_dist, 1)[0].numpy()                
+            for i in range(seq_length):
+                emb = torch.Tensor(movie_embeddings[cur_movie_id]).view(1,1,-1)
+                scores, hidden = self.model(emb, hidden)
+                # Sample from the network as a multinomial distribution
+                output_dist = scores.data.view(-1).div(0.8).exp()
+                #sample = torch.multinomial(output_dist, 1)[0].numpy()
+                #print ("Sampled:", sample)
+            denom = torch.sum(output_dist)
+            distribution = dist.div(denom)
+            seq.append(sample)
+                cur_movie_id = sample
+        return seq    
+
     def plotLearningCurve(self):
         plt.subplot(2, 1, 1)
         plt.plot(self.train_loss, label='Train')
