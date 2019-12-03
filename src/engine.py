@@ -47,6 +47,7 @@ class Engine(object):
             print('[Training Epoch {}] Batch {}, Loss {}'.format(epoch_id, batch_id, loss))
             total_loss += loss
         self._writer.add_scalar('model/loss', total_loss, epoch_id)
+        return total_loss
 
     def evaluate(self, evaluate_data, epoch_id):
         assert hasattr(self, 'model'), 'Please specify the exact model !'
@@ -81,6 +82,45 @@ class Engine(object):
         self._writer.add_scalar('performance/NDCG', ndcg, epoch_id)
         print('[Evluating Epoch {}] HR = {:.4f}, NDCG = {:.4f}, GBHR = {:.4f}'.format(epoch_id, hit_ratio, ndcg,gbhit_ratio))
         return hit_ratio, ndcg
+    
+    def combine_evaluate(self, evaluate_data,sequence_distribution=None):
+        assert hasattr(self, 'model'), 'Please specify the exact model !'
+        self.model.eval()
+        with torch.no_grad():
+            test_users, test_items, test_ratings = evaluate_data[0], evaluate_data[1], evaluate_data[2]
+            negative_users, negative_items, negative_ratings = evaluate_data[3], evaluate_data[4],evaluate_data[5] 
+            if self.config['use_cuda'] is True:
+                test_users = test_users.cuda()
+                test_items = test_items.cuda()
+                negative_users = negative_users.cuda()
+                negative_items = negative_items.cuda()
+            test_scores = self.model(test_users, test_items)
+            negative_scores = self.model(negative_users, negative_items)
+            if self.config['use_cuda'] is True:
+                test_users = test_users.cpu()
+                test_items = test_items.cpu()
+                test_scores = test_scores.cpu()
+                negative_users = negative_users.cpu()
+                negative_items = negative_items.cpu()
+                negative_scores = negative_scores.cpu()
+            subjects_data = [test_users.data.view(-1).tolist(),
+                             test_items.data.view(-1).tolist(),
+                             test_scores.data.view(-1).tolist(),
+                             test_ratings.data.view(-1).tolist(),    
+                             negative_users.data.view(-1).tolist(),
+                             negative_items.data.view(-1).tolist(),
+                             negative_scores.data.view(-1).tolist(),
+                             negative_ratings.data.view(-1).tolist()]
+            subjects_data.append(sequence_distribution)
+            self._metron.subjects = subjects_data
+           
+        hit_ratio, ndcg, gbhit_ratio = self._metron.cal_hit_ratio(), self._metron.cal_ndcg(), self._metron.cal_hit_gbratio()
+        
+        self._writer.add_scalar('performance/HR', hit_ratio,1)
+        self._writer.add_scalar('performance/NDCG', ndcg, 1)
+        print('[Evluating Epoch {}] HR = {:.4f}, NDCG = {:.4f}, GBHR = {:.4f}'.format(1, hit_ratio, ndcg,gbhit_ratio))
+        return hit_ratio, ndcg,gbhit_ratio
+
 
     def save(self, alias, epoch_id, hit_ratio, ndcg):
         assert hasattr(self, 'model'), 'Please specify the exact model !'

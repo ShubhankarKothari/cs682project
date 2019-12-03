@@ -7,7 +7,7 @@ class MetronAtK(object):
     def __init__(self, top_k):
         self._top_k = top_k
         self._subjects = None  # Subjects which we ran evaluation on
-
+        self.top_n = 1
     @property
     def top_k(self):
         return self._top_k
@@ -20,6 +20,15 @@ class MetronAtK(object):
     def subjects(self):
         return self._subjects
 
+    def score_weight(self,x,y,z):
+      
+        user = int(x)
+        movie = int(y)
+        score = z
+
+        return self.sequence_distribution[user][movie]*score
+        
+    
     @subjects.setter
     def subjects(self, subjects):
         """
@@ -29,6 +38,7 @@ class MetronAtK(object):
         assert isinstance(subjects, list)
         test_users, test_items, test_scores,test_ratings = subjects[0], subjects[1], subjects[2],subjects[3]
         neg_users, neg_items, neg_scores,neg_ratings = subjects[4], subjects[5], subjects[6], subjects[7]
+        self.sequence_distribution = subjects[8]
         # the golden set
         test = pd.DataFrame({'user': test_users,
                              'item': test_items,
@@ -48,13 +58,23 @@ class MetronAtK(object):
         # rank the items according to the scores for each user
         fullx = pd.concat(tuple([d.drop_duplicates(subset='item') for i,d in full.groupby('user')]),axis=0)
         self._scores = {}
-        
-        full = copy.deepcopy(fullx)
-        
-        full['rank'] = full.groupby('user')['score'].rank(method='first', ascending=False)
-        full.sort_values(['user', 'rank'], inplace=True)
-        self._subjects = full
 
+        full = copy.deepcopy(fullx)
+        if self.sequence_distribution ==None:
+            
+            full['rank'] = full.groupby('user')['score'].rank(method='first', ascending=False)
+            full.sort_values(['user', 'rank'], inplace=True)
+            self._subjects = full
+        
+        else:
+            full['scorex'] = full.apply(lambda x: self.score_weight(x['user'],x['item'],x['score']),axis=1)
+            #print(full.head())
+            full["rank"] = full.groupby('user')['scorex'].rank(method='first', ascending=False)
+            self._subjects = full
+            
+            
+            
+            
     def cal_hit_ratio(self):
         """Hit Ratio @ top_K"""
         full, top_k = self._subjects, self._top_k
@@ -76,6 +96,7 @@ class MetronAtK(object):
         score_1 = {d['user'].iloc[0]:len(d[(d['item'].isin(self._test_items[d['user'].iloc[0]]))& (d['ratings']==1.0)]) for i,d in top_k.groupby('user')}
         score_2 = {d['user'].iloc[0]:len(d[(d['item'].isin(self._test_items[d['user'].iloc[0]]))& (d['ratings']==0.0)]) for i,d in top_k.groupby('user')}   
         score_ratio = [(score_1[d]-score_2[d]/self._test_ratings[d]) if self._test_ratings[d]!=0 else 0  for d in self._test_ratings.keys()]
+
         #print(np.mean(score_ratio))
         #print(score_1)
         #score = score_1 + score_2

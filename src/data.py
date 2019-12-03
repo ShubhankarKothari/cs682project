@@ -29,7 +29,7 @@ class UserItemRatingDataset(Dataset):
 class SampleGenerator(object):
     """Construct dataset for NCF"""
 
-    def __init__(self, ratings,uwf_list):
+    def __init__(self, ratings,uwf_list,n_sampling = 99,topn = 1):
         """
         args:
             ratings: pd.DataFrame, which contains 4 columns = ['userId', 'itemId', 'rating', 'timestamp']
@@ -40,6 +40,8 @@ class SampleGenerator(object):
 
         self.ratings = ratings
         self.uwf_list = uwf_list
+        self.neg_sampling = n_sampling
+        self.topn_search = topn        
         # explicit feedback using _normalize and implicit using _binarize
         # self.preprocess_ratings = self._normalize(ratings)
         self.preprocess_ratings = self._binarize(ratings)
@@ -48,6 +50,7 @@ class SampleGenerator(object):
         # create negative item samples for NCF learning
         self.negatives = self._sample_negative(ratings,uwf_list)
         self.train_ratings, self.test_ratings = self._split_loo(self.preprocess_ratings)
+
 
     def _normalize(self, ratings):
         """normalize into [0, 1] from [0, max_rating], explicit feedback"""
@@ -67,10 +70,10 @@ class SampleGenerator(object):
         """leave one out train/test split """
         ratings['rank_latest'] = ratings.groupby(['userId'])['timestamp'].rank(method='first', ascending=False)
         #print(ratings.iloc[:30])
-        test = ratings[ratings['rank_latest'] <2] 
+        test = ratings[ratings['rank_latest'] <=self.topn_search] 
         #test['rank_latest'] = test['rank_latest'].apply(lambda x: 6.0-x) #re-ranking temporally.
         #changed values to top 5 as test.
-        train = ratings[ratings['rank_latest'] >= 2]
+        train = ratings[ratings['rank_latest'] > self.topn_search]
         assert train['userId'].nunique() == test['userId'].nunique()
         return train[['userId', 'itemId', 'rating']], test[['userId', 'itemId', 'rating']]
 
@@ -82,12 +85,15 @@ class SampleGenerator(object):
         #interact_status['negative_items'] = [uwf_list for i in range(interact_status.shape[0])]
         interact_status['negative_items'] = interact_status['interacted_items'].apply(lambda x: self.item_pool - x)
         interact_status['negative_items'] = interact_status['negative_items'].apply(lambda x: set(x))
-        
-        interact_status['negative_samples'] = interact_status['negative_items'].apply(lambda x: random.sample(x, 99))
+        if self.neg_sampling != -1:
+            interact_status['negative_samples'] = interact_status['negative_items'].apply(lambda x: random.sample(x, self.neg_sampling))
+        else:
+            interact_status['negative_samples'] = interact_status['negative_items']
         
         return interact_status[['userId', 'negative_items', 'negative_samples']]
 
     def instance_a_train_loader(self, num_negatives, batch_size):
+
         """instance train loader for one training epoch"""
         users, items, ratings = [], [], []
         train_ratings = pd.merge(self.train_ratings, self.negatives[['userId', 'negative_items']], on='userId')
@@ -121,3 +127,5 @@ class SampleGenerator(object):
                 negative_items.append(int(row.negative_samples[i]))
                 negative_rating.append(float(0))
         return [torch.LongTensor(test_users), torch.LongTensor(test_items), torch.LongTensor(test_rating), torch.LongTensor(negative_users), torch.LongTensor(negative_items), torch.LongTensor(negative_rating)]
+    
+    

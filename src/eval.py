@@ -6,8 +6,8 @@ from neumf import NeuMFEngine
 from data import SampleGenerator
 import torch
 import utils 
-from seqeunce-modelling.model import RNNModel
-from sequence-modelling.learner import Learner
+from model import RNNModel
+from learner import Learner
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -108,29 +108,33 @@ e_model = "gmf"
 
 # config = neumf_config
 # engine = NeuMFEngine(config)
-loss = None
-for epoch in range(config['num_epoch']):
-    print('Epoch {} starts !'.format(epoch))
-    print('-' * 80)
-    train_loader = sample_generator.instance_a_train_loader(config['num_negative'], config['batch_size'])
-    c_loss = engine.train_an_epoch(train_loader, epoch_id=epoch)
-    hit_ratio, ndcg = engine.evaluate(evaluate_data, epoch_id=epoch)
-    engine.save(config['alias'], epoch, hit_ratio, ndcg)
-    if not loss or val_loss < loss:
-        utils.save_checkpoint(engine.model,"checkpoints/best_model_collab_filtering_"+emodel+"_"+str(epoch)+".pt")
-        best_val_loss = c_loss
-        
-model = RNNModel('gru', ntokens, input_size, hidden_size, nlayers, dropout)
-model.load_state_dict(torch.load("model.pt"))
-model.eval()
-criterion = nn.CrossEntropyLoss()
+ntokens = 3953
+nlayers = 2
+hidden_size = 500
+dropout = 0.5
+train_batch_size = 200    
+print("Data Generated")
+#model = RNNModel('gru', ntokens, input_size, hidden_size, nlayers, dropout)
+#model.load_state_dict(torch.load("sequence_modelling/model.pt"))
+#model.eval()
+#criterion = nn.CrossEntropyLoss()
 # optimizer = optim.Adam(model.parameters(), lr=5)
-optimizer = optim.SGD(model.parameters(), lr=20)
-generator = Learner(model, criterion, optimizer)        
-df = sample_generator.train_ratings
-sequence_distribution = {}
-for i,d in df.groupby('user'):
-    sequence_distribution[d.iloc[0]['user']] = learner.generate_dist_from_subsequence(d['item'].to_list(),movie_embeddings)        
-state_dict = torch.load("checkpoints/best_model_collab_filtering_"+emodel+"_"+str(epoch)+".pt")
+#optimizer = optim.SGD(model.parameters(), lr=20)
+#generator = Learner(model, criterion, optimizer)        
+#df = sample_generator.train_ratings
+#sequence_distribution = {}
+#for i,d in df.groupby('user'):
+#    sequence_distribution[d.iloc[0]['user']] = learner.generate_dist_from_subsequence(d['item'].to_list(),movie_embeddings)        
+state_dict = torch.load("checkpoints/gmf_factor8neg4-implict_Epoch69_HR0.5412_NDCG0.3654.model")
 engine.model.load_state_dict(state_dict)
+print("Model Loaded")
+sequence_distribution = {}
+for i in range(6040):
+    x  = {}
+    y = np.random.uniform(1,0,3707)
+    for j in range(y.size):
+        x[j] = y[j]
+    sequence_distribution[i] = x   
+print("Dummy Data created")
+#sequence_distribution = None
 hit,ndcg,gbhit = engine.combine_evaluate(evaluate_data,sequence_distribution)
