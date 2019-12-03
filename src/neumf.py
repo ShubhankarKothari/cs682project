@@ -4,7 +4,6 @@ from mlp import MLP
 from engine import Engine
 from utils import use_cuda, resume_checkpoint
 
-
 class NeuMF(torch.nn.Module):
     def __init__(self, config):
         super(NeuMF, self).__init__()
@@ -13,6 +12,7 @@ class NeuMF(torch.nn.Module):
         self.num_items = config['num_items']
         self.latent_dim_mf = config['latent_dim_mf']
         self.latent_dim_mlp = config['latent_dim_mlp']
+        self.item_embedding = config['item_emb']
 
         self.embedding_user_mlp = torch.nn.Embedding(num_embeddings=self.num_users, embedding_dim=self.latent_dim_mlp)
         self.embedding_item_mlp = torch.nn.Embedding(num_embeddings=self.num_items, embedding_dim=self.latent_dim_mlp)
@@ -29,6 +29,7 @@ class NeuMF(torch.nn.Module):
     def forward(self, user_indices, item_indices):
         user_embedding_mlp = self.embedding_user_mlp(user_indices)
         item_embedding_mlp = self.embedding_item_mlp(item_indices)
+        # item_embedding_mlp = torch.Tensor(self.item_embedding[item_indices])
         user_embedding_mf = self.embedding_user_mf(user_indices)
         item_embedding_mf = self.embedding_item_mf(item_indices)
 

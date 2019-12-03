@@ -17,11 +17,15 @@ def MovieEncodingNoEmbedding(movieid):
 
 def MovieEncodingEmbedding(movieid, movieData, genreList, glove_model, vocab):
     movieDataIDRow = movieData.loc[movieData["MovieID"]==movieid]
-#     print("Movie name", movieDataIDRow.Name)
-    movieDataMovieID = ''.join([char for char in movieDataIDRow.Name.values[0].lower() if (char.isalpha() or char==" ")]).split(" ")
+#     print("Movie", movieDataIDRow)
+    movieDataMovieID = ''.join([char for char in movieDataIDRow.Name.values[0].lower() if (char.isalnum() or char==" ")]).split()
+#     print ("Split Title", movieDataMovieID)
+    year = movieDataIDRow.Name.values[0].lower()[-5:-1]
+#     print ("Year", year) 
     movieNameEmbedding = np.mean([glove_model[word] if (word in vocab) else np.zeros((1,300)) for word in movieDataMovieID],axis=0)                            
     movieDataGenreEncoding = np.array([1 if i in movieDataIDRow.Genres.values[0].split("|") else 0  for i in genreList])
-    data = np.concatenate((movieNameEmbedding, movieDataGenreEncoding.reshape(1,movieDataGenreEncoding.shape[0])), axis=None)
+#     print ("Genre Encoding", movieDataGenreEncoding)
+    data = np.concatenate((float(year)/2000, movieNameEmbedding, movieDataGenreEncoding.reshape(1,movieDataGenreEncoding.shape[0])), axis=None)
     return data.reshape(1,data.shape[0])
 
 
@@ -63,7 +67,7 @@ def UserSequences(ratingData,nextK):
             if userDfsize >= basicRequiredLengthToTrain:
                 data.reset_index(inplace=True,drop=True)
 #                 userDfBaseList = list(data[:basicRequiredLength][['UserID','MovieID','Rating']].to_records(index=False))
-                userDfBaseList = list(data[:basicRequiredLength][['MovieID']].to_records(index=False))
+                userDfBaseList = list(data[:basicRequiredLength][['itemId']].to_records(index=False))
                 userSequences.append(userDfBaseList)
                 '''
                 ToPredictDataAll = list(data.iloc[basicRequiredLength:][['UserID','MovieID','Rating']].to_records(index=False))
@@ -87,7 +91,7 @@ def GetAllUserSequences(data, seq_length):
             for start in np.arange(0, userDfsize, seq_length):
                 if userDfsize-start >= seq_length:
                     data.reset_index(inplace=True,drop=True)
-                    userSequences.append(list(data[start:start+seq_length][['MovieID']].to_records(index=False)))
+                    userSequences.append(list(data[start:start+seq_length][['itemId']].to_records(index=False)))
                 
     return userSequences
 

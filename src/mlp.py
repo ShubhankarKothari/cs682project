@@ -11,6 +11,7 @@ class MLP(torch.nn.Module):
         self.num_users = config['num_users']
         self.num_items = config['num_items']
         self.latent_dim = config['latent_dim']
+        self.item_embedding = config['item_emb']
 
         self.embedding_user = torch.nn.Embedding(num_embeddings=self.num_users, embedding_dim=self.latent_dim)
         self.embedding_item = torch.nn.Embedding(num_embeddings=self.num_items, embedding_dim=self.latent_dim)
@@ -25,6 +26,7 @@ class MLP(torch.nn.Module):
     def forward(self, user_indices, item_indices):
         user_embedding = self.embedding_user(user_indices)
         item_embedding = self.embedding_item(item_indices)
+        # item_embedding = torch.Tensor(self.item_embedding[item_indices])
         vector = torch.cat([user_embedding, item_embedding], dim=-1)  # the concat latent vector
         for idx, _ in enumerate(range(len(self.fc_layers))):
             vector = self.fc_layers[idx](vector)
@@ -44,7 +46,7 @@ class MLP(torch.nn.Module):
         gmf_model = GMF(config)
         if config['use_cuda'] is True:
             gmf_model.cuda()
-        resume_checkpoint(gmf_model, model_dir=config['pretrain_mf'], device_id=config['device_id'])
+        resume_checkpoint(gmf_model, model_dir=config['pretrain_mf'], device_id=0)
         self.embedding_user.weight.data = gmf_model.embedding_user.weight.data
         self.embedding_item.weight.data = gmf_model.embedding_item.weight.data
 

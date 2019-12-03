@@ -24,6 +24,7 @@ class Learner:
         hidden = self.model.init_hidden(batch_size)
         N = train_data.shape[0]
         num_batches = (N-1)//batch_size + 1;
+        print ("Num Batches", num_batches)
         for i in range(0, num_batches-1):
 #             print ("Batch", i*batch_size, "to" , min((i+1)*batch_size, N))
             data = train_data[i*batch_size:min((i+1)*batch_size, N)].transpose(0,1)
@@ -45,7 +46,7 @@ class Learner:
 
             losses.append(loss.item())
 
-            if i*batch_size % 1000 == 0 and i>0:
+            if i%5 == 0 and i>0:
                 avg_batch_loss = np.mean(losses)
                 print('{:5d}/{:5d} batches  | '
                         'loss {:5.2f}'.format(
@@ -67,6 +68,18 @@ class Learner:
         if val:
             self.val_loss.append(loss)
         return loss
+    
+    
+    def mapper(self, distribution, movie_id_map):
+        # inp[rowID] = value
+        # output : {movieID[rowID] : value[rowID]}
+        # takes in a distribution of size n_tokens and rearranges them to into a dict
+        # where dict[movie_id] = occurance likelihood.
+        movieId_dist = {}
+        for i, v in enumerate(distribution):
+            movieId_dist[movie_id_map.iloc[i]['mid']] = v.item()
+            # print (movie_id_map.iloc[i]['mid'], v.item())
+        return movieId_dist
     
     def generate_seq (self, init_movie_id, movie_embeddings, seq_length):
         cur_movie_id = init_movie_id
@@ -103,32 +116,39 @@ class Learner:
            
             return distribution
     
-    def generate_dist_from_subsequence(self, init_movie_sequence, movie_embeddings):
-        cur_movie_id = init_movie_sequence_[0]
+    
+    
+    
+    def generate_dist_from_subsequence(self, init_movie_sequence, movie_embeddings, movie_id_map):
+        cur_movie_id = init_movie_sequence[0]
         hidden = self.model.init_hidden(1)
         seq = []
         seq.append(cur_movie_id)
         with torch.no_grad():
-            for i in range(len(0,init_movie_sequence)):
+            for i in range(0,len(init_movie_sequence)):
                 cur_movie_id = init_movie_sequence[i]                
                 emb = torch.Tensor(movie_embeddings[cur_movie_id]).view(1,1,-1)
                 scores, hidden = self.model(emb, hidden)
                 #output_dist = scores.data.view(-1).div(0.8).exp()
                 #sample = torch.multinomial(output_dist, 1)[0].numpy()
             output_dist = scores.data.view(-1).div(0.8).exp()
-            sample = torch.multinomial(output_dist, 1)[0].numpy()                
-            emb = torch.Tensor(movie_embeddings[cur_movie_id]).view(1,1,-1)
-            scores, hidden = self.model(emb, hidden)
+            # sample = torch.multinomial(output_dist, 1)[0].numpy()                
+            # emb = torch.Tensor(movie_embeddings[cur_movie_id]).view(1,1,-1)
+            # scores, hidden = self.model(emb, hidden)
             # Sample from the network as a multinomial distribution
-            output_dist = scores.data.view(-1).div(0.8).exp()
+            # output_dist = scores.data.view(-1).div(0.8).exp()
             #sample = torch.multinomial(output_dist, 1)[0].numpy()
             #print ("Sampled:", sample)
             denom = torch.sum(output_dist)
-            distribution = dist.div(denom)
-            return distribution    
+            distribution = output_dist.div(denom)
+            distribution = self.mapper(distribution, movie_id_map)
+        return distribution    
 
     def plotLearningCurve(self):
-        plt.subplot(2, 1, 1)
-        plt.plot(self.train_loss, label='Train')
-        plt.plot(self.val_loss, label='Val')
-        plt.legend(loc='upper right')
+        fig, ax = plt.subplots()
+#         plt.subplot(2, 1, 1)
+        ax.plot(self.train_loss, label='Train')
+        ax.plot(self.val_loss, label='Val')
+        ax.legend(loc='upper right')
+        plt.show()
+        fig.savefig('../../res/seq_learning_curve.png')
