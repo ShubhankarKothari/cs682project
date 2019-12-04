@@ -28,8 +28,8 @@ class NeuMF(torch.nn.Module):
 
     def forward(self, user_indices, item_indices):
         user_embedding_mlp = self.embedding_user_mlp(user_indices)
-        item_embedding_mlp = self.embedding_item_mlp(item_indices)
-        # item_embedding_mlp = torch.Tensor(self.item_embedding[item_indices])
+        # item_embedding_mlp = self.embedding_item_mlp(item_indices)
+        item_embedding_mlp = torch.Tensor(self.item_embedding[item_indices])
         user_embedding_mf = self.embedding_user_mf(user_indices)
         item_embedding_mf = self.embedding_item_mf(item_indices)
 

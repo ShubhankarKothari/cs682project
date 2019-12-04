@@ -5,6 +5,7 @@ from mlp import MLPEngine
 from neumf import NeuMFEngine
 from data import SampleGenerator
 import torch
+
 import utils 
 from sequence_modeling.model import RNNModel
 from sequence_modeling.learner import Learner
@@ -53,6 +54,7 @@ for rowNum in range(numRows):
 
 print("Movie Embeddings", movie_embeddings.shape)
 
+
 gmf_config = {'alias': 'gmf_factor8neg4-implict',
               'num_epoch':70,
               'batch_size': 1024,
@@ -65,17 +67,17 @@ gmf_config = {'alias': 'gmf_factor8neg4-implict',
               # 'rmsprop_momentum': 0,
               'optimizer': 'adam',
               'adam_lr': 1e-3,
-              'num_users': 5421,
+              'num_users': 6040,
               'num_items': 3706,
               'latent_dim': 8,
               'num_negative': 4,
               'l2_regularization': 0, # 0.01
               'use_cuda': False,
-              'device_id': 0,
+              'device_id': 7,
               'model_dir':'checkpoints/{}_Epoch{}_HR{:.4f}_NDCG{:.4f}.model'}
 
 mlp_config = {'alias': 'mlp_factor8neg4_bz256_166432168_pretrain_reg_0.0000001',
-              'num_epoch': 30,
+              'num_epoch': 20,
               'batch_size': 256,  # 1024,
               'optimizer': 'adam',
               'adam_lr': 1e-3,
@@ -84,14 +86,16 @@ mlp_config = {'alias': 'mlp_factor8neg4_bz256_166432168_pretrain_reg_0.0000001',
               'latent_dim': 8,
               'num_negative': 4,
               'layers': [16,16,8],  # layers[0] is the concat of latent user vector & latent item vector
+              # 'layers': [326, 64, 32, 8],
               'l2_regularization': 0.0000001,  # MLP model is sensitive to hyper params
               'use_cuda': False,
               'device_id': 7,
-              'pretrain': False,
-              'pretrain_mf': 'checkpoints/{}'.format('gmf_factor8neg4_Epoch100_HR0.6391_NDCG0.2852.model'),
-              'model_dir':'checkpoints/{}_Epoch{}_HR{:.4f}_NDCG{:.4f}.model'}
+              'pretrain': True,
+              'pretrain_mf': 'checkpoints/{}'.format('gmf_factor8neg4-implict_Epoch69_HR0.5460_NDCG0.3681.model'),
+              'model_dir':'checkpoints/{}_Epoch{}_HR{:.4f}_NDCG{:.4f}.model',
+              'item_emb':movie_embeddings}
 
-neumf_config = {'alias': 'neumf_emb_64_32_reg_0.0000001',
+neumf_config = {'alias': 'neumf_emb_64_32_reg_0.0000001_327',
                 'num_epoch': 100,
                 'batch_size': 1024,
                 'optimizer': 'adam',
@@ -102,7 +106,7 @@ neumf_config = {'alias': 'neumf_emb_64_32_reg_0.0000001',
                 'latent_dim_mlp': 8,
                 'num_negative': 4,
                 # 'layers': [16,32,16,8],  # layers[0] is the concat of latent user vector & latent item vector
-                'layers': [326, 64, 32],
+                'layers': [327, 64, 32],
                 'l2_regularization': 0.0000001,
                 'use_cuda': False,
                 'device_id': 7,
@@ -110,12 +114,13 @@ neumf_config = {'alias': 'neumf_emb_64_32_reg_0.0000001',
                 'pretrain_mf': 'checkpoints/{}'.format('gmf_factor8neg4-implict_Epoch69_HR0.5460_NDCG0.3681.model'),
                 'pretrain_mlp': 'checkpoints/{}'.format('mlp_emb_pretrain_reg_0.0000001_64_32_Epoch19_HR0.5510_NDCG0.3892.model'),
                 'model_dir':'checkpoints/{}_Epoch{}_HR{:.4f}_NDCG{:.4f}.model',
-                'item_emb': movie_embeddings
+                'item_emb':movie_embeddings
                 }
 
 # Load Data
 ml1m_dir = 'data/ml-1m/ratings.dat' #ratings.dat
 ml1m_rating = pd.read_csv(ml1m_dir, sep='::', header=None, names=['uid', 'mid', 'rating', 'timestamp'],  engine='python')
+
 # Reindex
 ml1m_uwf = 'data/ml-1m/unwatchedFilms.dat'
 uwflist = []
@@ -139,7 +144,7 @@ evaluate_data = sample_generator.evaluate_data
 # Specify the exact model
 # config = gmf_config
 # engine = GMFEngine(config)
-e_model = "gmf"
+# e_model = "gmf"
 #config = mlp_config
 #engine = MLPEngine(config)
 #state_dict = torch.load( 'checkpoints/gmf_factor8neg4-implict_Epoch199_HR0.6363_NDCG0.3678.model')
@@ -152,42 +157,46 @@ e_model = "gmf"
 config = neumf_config
 engine = NeuMFEngine(config)
 ntokens = 3706
-nlayers = 2
-hidden_size = 50
-dropout = 0.8
-train_batch_size = 200    
+nlayers = 3
+hidden_size = 128
+dropout = 0.7
+train_batch_size = 256    
 input_size = 319
 print("Data Generated")
 
 # load Seq Model
-model = RNNModel('gru', ntokens, input_size, hidden_size, nlayers, dropout)
-model.load_state_dict(torch.load("sequence_modeling/model.pt"))
-model.eval()
+# model = RNNModel('gru', ntokens, input_size, hidden_size, nlayers, dropout)
+# model.load_state_dict(torch.load("checkpoints/seq_3_128_0.7_256_20_best.pt"))
+# model.eval()
 
-print ("Loaded Seq Model")
+# print ("Loaded Seq Model")
 
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=5)
-optimizer = optim.SGD(model.parameters(), lr=20)
+# criterion = nn.CrossEntropyLoss()
+# # optimizer = optim.Adam(model.parameters(), lr=5)
+# optimizer = optim.SGD(model.parameters(), lr=10)
 
-generator = Learner(model, criterion, optimizer)        
-df = sample_generator.train_ratings
-sequence_distribution = {}
-for i,d in df.groupby('userId'):
-  if i>0 and i%100 == 0:
-    print ("Completed Dist Generation for ", i)
-    with open('seq_dist.pickle', 'wb') as handle:
-      pickle.dump(sequence_distribution, handle)
-  sequence_distribution[d.iloc[0]['userId']] = generator.generate_dist_from_subsequence(d['itemId'].to_list(),movie_embeddings, item_id)        
+# generator = Learner(model, criterion, optimizer)        
+# df = sample_generator.train_ratings
+# sequence_distribution = {}
+with open('seq_dist_latest.pickle', 'rb') as handle:
+    sequence_distribution = pickle.load(handle)
 
+# print(item_id.loc[item_id['mid'] == '1775'])
+# for i,d in df.groupby('userId'):
+#   if d.iloc[0]['userId'] in sequence_distribution:
+#     continue
+#   if i>0 and i%100 == 0:
+#     print ("Completed Dist Generation for ", i)
+#     with open('seq_dist_seq_3_128_0.7_256_20.pickle', 'wb') as handle:
+#       pickle.dump(sequence_distribution, handle)
+#   sequence_distribution[d.iloc[0]['userId']] = generator.generate_dist_from_subsequence(d['itemId'].to_list(),movie_embeddings)        
+# with open('seq_dist_seq_3_128_0.7_256_20.pickle', 'wb') as handle:
+#   pickle.dump(sequence_distribution, handle)
 
-# with open('seq_dist.pickle', 'rb') as handle:
-    # sequence_distribution = pickle.load(handle)
-
-print ("Generated sequence distribution")
+print ("Generated sequence distribution", len(sequence_distribution), len(sequence_distribution[1]))
 
 # load NCF
-state_dict = torch.load("checkpoints/neumf_emb_64_32_reg_0.0000001_Epoch99_HR0.5388_NDCG0.3677.model")
+state_dict = torch.load("checkpoints/neumf_emb_64_32_reg_0.0000001_327_Epoch4_HR0.4091_NDCG0.2576.model")
 engine.model.load_state_dict(state_dict)
 print("NCF Model Loaded")
 # sequence_distribution = {}
@@ -199,4 +208,8 @@ print("NCF Model Loaded")
 #     sequence_distribution[i] = x   
 # print("Dummy Data created")
 #sequence_distribution = None
-hit,ndcg,gbhit = engine.combine_evaluate(evaluate_data,sequence_distribution)
+print("Just NCF")
+ncf_metrics = engine.evaluate(evaluate_data, 1)
+
+print("Combined Model")
+combined_metrics = engine.combine_evaluate(evaluate_data,sequence_distribution)

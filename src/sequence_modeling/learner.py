@@ -119,7 +119,7 @@ class Learner:
     
     
     
-    def generate_dist_from_subsequence(self, init_movie_sequence, movie_embeddings, movie_id_map):
+    def generate_dist_from_subsequence(self, init_movie_sequence, movie_embeddings):
         cur_movie_id = init_movie_sequence[0]
         hidden = self.model.init_hidden(1)
         seq = []
@@ -141,7 +141,6 @@ class Learner:
             #print ("Sampled:", sample)
             denom = torch.sum(output_dist)
             distribution = output_dist.div(denom)
-            distribution = self.mapper(distribution, movie_id_map)
         return distribution    
 
     def plotLearningCurve(self):

@@ -80,10 +80,11 @@ class Engine(object):
         hit_ratio, ndcg, gbhit_ratio = self._metron.cal_hit_ratio(), self._metron.cal_ndcg(), self._metron.cal_hit_gbratio()
         self._writer.add_scalar('performance/HR', hit_ratio, epoch_id)
         self._writer.add_scalar('performance/NDCG', ndcg, epoch_id)
+        self._writer.add_scalar('performance/GBHR', gbhit_ratio, epoch_id)
         print('[Evluating Epoch {}] HR = {:.4f}, NDCG = {:.4f}, GBHR = {:.4f}'.format(epoch_id, hit_ratio, ndcg,gbhit_ratio))
         return hit_ratio, ndcg
     
-    def combine_evaluate(self, evaluate_data,sequence_distribution=None):
+    def combine_evaluate(self, evaluate_data, sequence_distribution=None):
         assert hasattr(self, 'model'), 'Please specify the exact model !'
         self.model.eval()
         with torch.no_grad():
@@ -116,8 +117,9 @@ class Engine(object):
            
         hit_ratio, ndcg, gbhit_ratio = self._metron.cal_hit_ratio(), self._metron.cal_ndcg(), self._metron.cal_hit_gbratio()
         
-        self._writer.add_scalar('performance/HR', hit_ratio,1)
-        self._writer.add_scalar('performance/NDCG', ndcg, 1)
+        # self._writer.add_scalar('performance/HR', hit_ratio,1)
+        # self._writer.add_scalar('performance/NDCG', ndcg, 1)
+        # self._writer.add_scalar('performance/GBHR', gbhit_ratio, 1)
         print('[Evluating Epoch {}] HR = {:.4f}, NDCG = {:.4f}, GBHR = {:.4f}'.format(1, hit_ratio, ndcg,gbhit_ratio))
         return hit_ratio, ndcg,gbhit_ratio
 

@@ -24,8 +24,9 @@ def MovieEncodingEmbedding(movieid, movieData, genreList, glove_model, vocab):
 #     print ("Year", year) 
     movieNameEmbedding = np.mean([glove_model[word] if (word in vocab) else np.zeros((1,300)) for word in movieDataMovieID],axis=0)                            
     movieDataGenreEncoding = np.array([1 if i in movieDataIDRow.Genres.values[0].split("|") else 0  for i in genreList])
-#     print ("Genre Encoding", movieDataGenreEncoding)
+    # print ("Genre Encoding", movieDataGenreEncoding)
     data = np.concatenate((float(year)/2000, movieNameEmbedding, movieDataGenreEncoding.reshape(1,movieDataGenreEncoding.shape[0])), axis=None)
+    # data = np.concatenate((movieNameEmbedding, movieDataGenreEncoding.reshape(1,movieDataGenreEncoding.shape[0])), axis=None)
     return data.reshape(1,data.shape[0])
 
 
@@ -52,7 +53,7 @@ def UserEncoding(userid):
 def UserSequences(ratingData,nextK):
 
     timeSortedRatingData = ratingData.sort_values(['Timestamp'],ascending=True)
-    timeSortedRatingDataPerUserObj = timeSortedRatingData.groupby("UserID")
+    timeSortedRatingDataPerUserObj = timeSortedRatingData.groupby("userId")
     ratingDataByLength = [(data.shape[0]) for ix,data in timeSortedRatingDataPerUserObj] 
     basicRequiredLength = int(np.percentile(ratingDataByLength,10))
     if nextK != -1:
@@ -83,7 +84,7 @@ def UserSequences(ratingData,nextK):
 
 def GetAllUserSequences(data, seq_length):
     timeSortedData = data.sort_values(['Timestamp'],ascending=True)
-    timeSortedDataPerUserObj = timeSortedData.groupby("UserID")
+    timeSortedDataPerUserObj = timeSortedData.groupby("userId")
     userSequences = []
     for idx,data in timeSortedDataPerUserObj:
             userDfsize = data.shape[0]

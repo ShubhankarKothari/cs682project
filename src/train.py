@@ -94,7 +94,7 @@ mlp_config = {'alias': 'mlp_factor8neg4_bz256_166432168_pretrain_reg_0.0000001',
               'model_dir':'checkpoints/{}_Epoch{}_HR{:.4f}_NDCG{:.4f}.model',
               'item_emb':movie_embeddings}
 
-neumf_config = {'alias': 'baseline_neumf',
+neumf_config = {'alias': 'baseline_neumf_alldata',
                 'num_epoch': 100,
                 'batch_size': 1024,
                 'optimizer': 'adam',
@@ -104,8 +104,8 @@ neumf_config = {'alias': 'baseline_neumf',
                 'latent_dim_mf': 8,
                 'latent_dim_mlp': 8,
                 'num_negative': 4,
-                # 'layers': [16,32,16,8],  # layers[0] is the concat of latent user vector & latent item vector
-                'layers': [326, 64, 32],
+                'layers': [16,32,16,8],  # layers[0] is the concat of latent user vector & latent item vector
+                # 'layers': [327, 64, 32],
                 'l2_regularization': 0.0000001,
                 'use_cuda': False,
                 'device_id': 7,
@@ -168,6 +168,6 @@ for epoch in range(config['num_epoch']):
     c_loss = engine.train_an_epoch(train_loader, epoch_id=epoch)
     hit_ratio, ndcg = engine.evaluate(evaluate_data, epoch_id=epoch)
     engine.save(config['alias'], epoch, hit_ratio, ndcg)
-    if not loss or val_loss < loss:
-        utils.save_checkpoint(engine.model,"checkpoints/best_model_collab_filtering_"+emodel+"_"+str(epoch)+".pt")
-        best_val_loss = c_loss
+    # if not loss or val_loss < loss:
+    #     utils.save_checkpoint(engine.model,"checkpoints/best_model_collab_filtering_"+emodel+"_"+str(epoch)+".pt")
+    #     best_val_loss = c_loss

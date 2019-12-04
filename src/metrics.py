@@ -21,12 +21,14 @@ class MetronAtK(object):
         return self._subjects
 
     def score_weight(self,x,y,z):
-      
+        alpha = 0.3
         user = int(x)
         movie = int(y)
         score = z
-
-        return self.sequence_distribution[user][movie]*score
+        # print ("Weighing score for", user, movie, score)
+        if user not in self.sequence_distribution or movie not in self.sequence_distribution[user]:
+            return score
+        return alpha*self.sequence_distribution[user][movie]*score + (1.0-alpha)*score
         
     
     @subjects.setter
@@ -38,7 +40,9 @@ class MetronAtK(object):
         assert isinstance(subjects, list)
         test_users, test_items, test_scores,test_ratings = subjects[0], subjects[1], subjects[2],subjects[3]
         neg_users, neg_items, neg_scores,neg_ratings = subjects[4], subjects[5], subjects[6], subjects[7]
-        self.sequence_distribution = subjects[8]
+        self.sequence_distribution = None
+        if len(subjects) == 9:
+            self.sequence_distribution = subjects[8]
         # the golden set
         test = pd.DataFrame({'user': test_users,
                              'item': test_items,
